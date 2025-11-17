@@ -22,6 +22,7 @@ class SliceDataset(Dataset):
         self.load_path = data_path
         self.task = task
         self.train = train
+        self.dataset = dataset
 
         if indices is not None:
             self.indices = indices
