@@ -65,7 +65,7 @@ def make_slice(path):
         if np.any(mask_slice > 1):
             tumor_result.append(f'{case}_{i}.npz')
 
-    print(f'complete making slices of {case}')
+    print(f'complete making KITS {args.mode} slices of {case}')
     return organ_result, tumor_result
 
 
