@@ -1,7 +1,7 @@
 import os
 import argparse
 
-from models.pl_model.segmentation_model import SegmentationPLModel
+from pl_model.segmentation_model import SegmentationPLModel
 
 import torch
 from pytorch_lightning import Trainer

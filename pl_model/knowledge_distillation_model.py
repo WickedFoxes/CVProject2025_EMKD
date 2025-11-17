@@ -1,7 +1,7 @@
 import torch
 from models import get_model
-from models.pl_model.base import BasePLModel
-from models.pl_model.segmentation_model import SegmentationPLModel
+from pl_model.base import BasePLModel
+from pl_model.segmentation_model import SegmentationPLModel
 from utils.loss_functions import prediction_map_distillation, importance_maps_distillation, region_affinity_distillation
 from datasets.dataset import SliceDataset, load_case_mapping, split_train_val
 

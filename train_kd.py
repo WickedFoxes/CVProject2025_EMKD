@@ -1,8 +1,7 @@
 import os
 import argparse
 
-from models.pl_model.segmentation_model import SegmentationPLModel
-from models.pl_model.knowledge_distillation_model import KnowledgeDistillationPLModel
+from pl_model.knowledge_distillation_model import KnowledgeDistillationPLModel
 
 import torch
 from pytorch_lightning import Trainer

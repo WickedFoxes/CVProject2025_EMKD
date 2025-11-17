@@ -1,6 +1,6 @@
 import torch
 from models import get_model
-from models.pl_model.base import BasePLModel
+from pl_model.base import BasePLModel
 from datasets.dataset import SliceDataset, load_case_mapping, split_train_val
 
 from torch.utils.data import DataLoader
