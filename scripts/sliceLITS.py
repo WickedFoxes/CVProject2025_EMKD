@@ -18,10 +18,10 @@ args = parser.parse_args()
 
 def main():
     if not os.path.exists(args.out_path):
-        os.mkdir(args.out_path)
+        os.makedirs(args.out_path, exist_ok=True)
     out_path = os.path.join(args.out_path, args.mode)
     if not os.path.exists(out_path):
-        os.mkdir(out_path)
+        os.makedirs(out_path, exist_ok=True)
 
     if args.mode == 'train':
         paths = glob(os.path.join(args.in_path, "Training Batch 2", "volume-*.nii"))
