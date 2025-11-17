@@ -65,6 +65,7 @@ class KnowledgeDistillationPLModel(BasePLModel):
             data_path=self.hparams.data_path,
             indices=self.train_indices,
             task=self.hparams.task,
+            dataset=self.hparams.dataset,
             train=True
         )
         return DataLoader(dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True)
@@ -74,6 +75,7 @@ class KnowledgeDistillationPLModel(BasePLModel):
             data_path=self.hparams.data_path,
             indices=self.val_indices,
             task=self.hparams.task,
+            dataset=self.hparams.dataset,
             train=False
         )
         return DataLoader(dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True)

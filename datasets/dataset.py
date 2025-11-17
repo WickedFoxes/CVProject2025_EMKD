@@ -11,7 +11,8 @@ class SliceDataset(Dataset):
     def __init__(self, 
                  data_path:str, 
                  indices=None,
-                 task='tumor', 
+                 task='tumor',
+                 dataset='kits',
                  train=True
         ):
         """ 'lits' 데이터셋 전용 클래스 """
