@@ -4,8 +4,7 @@ import argparse
 from pl_model.segmentation_model import SegmentationPLModel
 
 import torch
-from pytorch_lightning import Trainer
-from pytorch_lightning.utilities import seed
+from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -24,7 +23,7 @@ parser.add_argument('--dataset', type=str, default='kits', choices=['kits', 'lit
 
 def main():
     args = parser.parse_args()
-    seed.seed_everything(args.seed)
+    seed_everything(args.seed)
     
     model = SegmentationPLModel(args)
 
