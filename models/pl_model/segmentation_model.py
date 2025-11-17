@@ -1,0 +1,69 @@
+import torch
+from models import get_model
+from models.pl_model.base import BasePLModel
+from datasets.dataset import SliceDataset, load_case_mapping, split_train_val
+
+from torch.utils.data import DataLoader
+from utils.loss_functions import calc_loss
+
+class SegmentationPLModel(BasePLModel):
+    def __init__(self, params):
+        super(SegmentationPLModel, self).__init__()
+        self.save_hyperparameters(params)
+        self.net = get_model(self.hparams.model, channels=2)
+        
+        case_mapping = load_case_mapping(self.hparams.data_path)
+        train_indices, val_indices = split_train_val(
+            case_mapping, train_ratio=0.8, seed=self.hparams.seed
+        )
+        self.train_indices = train_indices
+        self.val_indices = val_indices
+
+
+    def forward(self, x):
+        output, _, _ = self.net(x)
+        return output
+
+    def training_step(self, batch, batch_idx):
+        ct, mask, name = batch
+        output = self.forward(ct)
+        loss = calc_loss(output, mask)  # Dice_loss Used
+
+        return {'loss': loss}
+
+    def validation_step(self, batch, batch_idx):
+        return self.test_step(batch, batch_idx)
+
+    def test_step(self, batch, batch_idx):
+        ct, mask, name = batch
+        output = self.forward(ct)
+
+        self.measure(batch, output)
+
+    def train_dataloader(self):
+        dataset = SliceDataset(
+            data_path=self.hparams.data_path,
+            indices=self.train_indices,
+            task=self.hparams.task,
+            train=True
+        )
+        return DataLoader(dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True)
+
+    def test_dataloader(self):
+        dataset = SliceDataset(
+            data_path=self.hparams.data_path,
+            indices=self.val_indices,
+            task=self.hparams.task,
+            train=False
+        )
+        return DataLoader(dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True)
+
+    def val_dataloader(self):
+        return self.test_dataloader()
+
+    def configure_optimizers(self):
+        opt = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, betas=(0.9, 0.999))
+        scheduler = {'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.hparams.epochs, eta_min=1e-6),
+                     'interval': 'epoch',
+                     'frequency': 1}
+        return [opt], [scheduler]
