@@ -7,7 +7,7 @@ class BasePLModel(LightningModule):
         self.metric = {}
         self.num_class = 2
 
-    def training_epoch_end(self, outputs):
+    def on_train_epoch_end(self, outputs):
         train_loss_mean = 0
         for output in outputs:
             train_loss_mean += output['loss']
