@@ -1,0 +1,7 @@
+opencv-python
+nibabel
+matplotlib
+matplotlib-inline
+IPython
+torchmetrics
+pytorch-lightning
