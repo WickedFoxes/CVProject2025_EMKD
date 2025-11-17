@@ -1,0 +1,2 @@
+from pl_model.segmentation_model import SegmentationPLModel
+from pl_model.knowledge_distillation_model import KnowledgeDistillationPLModel
