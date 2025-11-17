@@ -35,12 +35,10 @@ def main():
         save_top_k=-1,
         monitor='val_dice',
         mode='max',
-        verbose=True
     )
 
     logger = TensorBoardLogger('log', name='%s_%s_%s' % (args.dataset, args.task, args.model))
-    trainer = Trainer.from_argparse_args(
-        args, 
+    trainer = Trainer(
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         devices=1,
         max_epochs=args.epochs, 
