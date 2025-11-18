@@ -1,10 +1,7 @@
 import os
 import argparse
-import cv2
 import numpy as np
-import nibabel as nib
 from glob import glob
-from multiprocessing.dummy import Pool
 
 parser = argparse.ArgumentParser(description='Collect Tumor/Organ Data')
 parser.add_argument('--path', type=str, default='/data/kits19/data')
