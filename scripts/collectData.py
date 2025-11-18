@@ -3,8 +3,7 @@ import argparse
 import numpy as np
 from glob import glob
 from multiprocessing import Pool, cpu_count
-from functools import partial
-from tqdm import tqdm  # 진행 상황 확인용 (pip install tqdm 필요)
+from tqdm import tqdm 
 
 parser = argparse.ArgumentParser(description='Collect Tumor/Organ Data')
 parser.add_argument('--path', type=str, default='/data/kits19/data')

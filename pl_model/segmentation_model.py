@@ -41,9 +41,9 @@ class SegmentationPLModel(BasePLModel):
         self.measure(batch, output)
 
     def train_dataloader(self):
-        data_list = get_data_list(self.hparams.data_path, self.train_indices)
         dataset = SliceDataset(
-            data_list=data_list,
+            data_path=self.hparams.data_path,
+            indices=self.train_indices,
             task=self.hparams.task,
             dataset=self.hparams.dataset,
             train=True
@@ -51,9 +51,9 @@ class SegmentationPLModel(BasePLModel):
         return DataLoader(dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True)
 
     def test_dataloader(self):
-        data_list = get_data_list(self.hparams.data_path, self.val_indices)
         dataset = SliceDataset(
-            data_list=data_list,
+            data_path=self.hparams.data_path,
+            indices=self.val_indices,
             task=self.hparams.task,
             dataset=self.hparams.dataset,
             train=False

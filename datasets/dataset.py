@@ -9,18 +9,27 @@ from collections import defaultdict
 
 class SliceDataset(Dataset):
     def __init__(self, 
-                 data_list:list, 
+                 data_path:str, 
+                 indices=None,
                  task='tumor',
                  dataset='kits',
                  train=True
         ):
         super(SliceDataset, self).__init__()
         assert task in ['organ', 'tumor']
+        assert dataset in ['lits', 'kits']
         
-        self.data_list = data_list
+        self.load_path = data_path
         self.task = task
         self.train = train
         self.dataset = dataset
+
+        if indices is not None:
+            self.indices = indices
+        else:
+            # 전체 파일 스캔
+            all_files = sorted(os.listdir(self.load_path))
+            self.indices = [int(f.replace('.npz', '')) for f in all_files if f.endswith('.npz')]
 
     def rotate(self, img, mask, k=None):
         """ 90도 단위 회전 증강 """
@@ -50,10 +59,18 @@ class SliceDataset(Dataset):
 
     def __getitem__(self, item):
         # 1. 데이터 로딩
-        ct, mask, case = self.data_list[item]
-        ct = ct.copy()
-        mask = mask.copy()
+        f_name = self.indices[item]
+        case = f_name.split('_')[0]
+        npz_path = os.path.join(self.load_path, f_name)
         
+        try:
+            npz = np.load(npz_path, allow_pickle=True)
+            ct = npz.get('ct')
+            mask = npz.get('mask')
+        except Exception as e:
+            print(f"Error loading file: {npz_path}")
+            raise e
+
         # 2. 태스크별 마스크 전처리
         if self.task == 'organ':
             mask[mask > 0] = 1
