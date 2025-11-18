@@ -7,7 +7,7 @@ class BasePLModel(LightningModule):
         self.metric = {}
         self.num_class = 2
 
-    def on_train_epoch_end(self, outputs):
+    def training_epoch_end(self, outputs):
         train_loss_mean = 0
         for output in outputs:
             train_loss_mean += output['loss']
@@ -64,6 +64,7 @@ class BasePLModel(LightningModule):
             self.log('voe_class{}'.format(i), scores[i][1].item())
             self.log('rvd_class{}'.format(i), scores[i][2].item())
 
+            print("")
             print('dice_class{}: {}'.format(i, scores[i][0].item()))
             print('voe_class{}: {}'.format(i, scores[i][1].item()))
             print('rvd_class{}: {}'.format(i, scores[i][2].item()))

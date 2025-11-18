@@ -34,9 +34,10 @@ def main():
         dirpath=os.path.join(args.checkpoint_path),
         filename='checkpoint_%s_%s_kd_%s_{epoch}' % (args.dataset, args.task, args.smodel),
         save_last=True,
-        save_top_k=-1,
-        monitor='val_dice',
+        save_top_k=5,
+        monitor='dice_class0',
         mode='max',
+        verbose=True
     )
 
     logger = TensorBoardLogger('log', name='%s_%s_kd_%s' % (args.dataset, args.task, args.smodel))
