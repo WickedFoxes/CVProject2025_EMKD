@@ -52,6 +52,8 @@ class SliceDataset(Dataset):
     def __getitem__(self, item):
         # 1. 데이터 로딩
         ct, mask, case = self.data_list[item]
+        ct = ct.copy()
+        mask = mask.copy()
         
         # 2. 태스크별 마스크 전처리
         if self.task == 'organ':
