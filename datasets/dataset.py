@@ -103,25 +103,10 @@ class SliceDataset(Dataset):
 
         return ct, mask, case
 
-def get_data_list(data_path, indices):
-    result = []
-    for f_name in indices: 
-        case = f_name.split('_')[0]
-        npz_path = os.path.join(data_path, f_name)
-        try:
-            npz = np.load(npz_path, allow_pickle=True)
-            ct = npz.get('ct')
-            mask = npz.get('mask')
-            result.append((ct, mask, case))
-        except Exception as e:
-            print(f"Error loading file: {npz_path}")
-            raise e
-    return result
 
-
-def load_case_mapping(data_path):
+def load_case_mapping(data_path, task):
     """
-    data_path에서 .npz 파일들을 스캔하여 case_id를 기준으로 그룹화합니다.
+    data_path에서 slices.npy를 기준으로 .npz 파일들을 스캔하여 case_id를 기준으로 그룹화합니다.
     파일명 포맷은 '00000_0.npz'로 가정합니다.
     
     Args:
@@ -131,12 +116,12 @@ def load_case_mapping(data_path):
         dict: {case_id: {'indices': [파일명 리스트], 'n_slices': 슬라이스 개수}}
         예: {'00000': {'indices': ['00000_0.npz', '00000_1.npz'], 'n_slices': 2}}
     """
-    
+    assert task in ['organ', 'tumor']
     # defaultdict는 키가 없을 때 자동으로 빈 리스트([])를 생성해줍니다.
     case_map_raw = defaultdict(list)
-
+    
     try:
-        all_filenames = os.listdir(data_path)
+        all_filenames = np.load(os.path.join(data_path, '%s_slices.npy' % (task)))
     except FileNotFoundError:
         print(f"Error: Directory not found at {data_path}")
         return {}

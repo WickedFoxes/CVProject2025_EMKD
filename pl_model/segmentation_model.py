@@ -12,7 +12,7 @@ class SegmentationPLModel(BasePLModel):
         self.save_hyperparameters(params)
         self.net = get_model(self.hparams.model, channels=2)
         
-        case_mapping = load_case_mapping(self.hparams.data_path)
+        case_mapping = load_case_mapping(self.hparams.data_path, self.hparams.task)
         train_indices, val_indices = split_train_val(
             case_mapping, train_ratio=0.8, seed=self.hparams.seed
         )
