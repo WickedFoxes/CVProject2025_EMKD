@@ -9,8 +9,7 @@ from collections import defaultdict
 
 class SliceDataset(Dataset):
     def __init__(self, 
-                 data_path:str, 
-                 indices=None,
+                 data_list:list, 
                  task='tumor',
                  dataset='kits',
                  train=True
@@ -19,18 +18,10 @@ class SliceDataset(Dataset):
         super(SliceDataset, self).__init__()
         assert task in ['organ', 'tumor']
         
-        self.load_path = data_path
+        self.data_list = data_list
         self.task = task
         self.train = train
         self.dataset = dataset
-
-        if indices is not None:
-            self.indices = indices
-        else:
-            # 전체 파일 스캔
-            all_files = sorted(os.listdir(self.load_path))
-            self.indices = [int(f.replace('.npz', '')) for f in all_files if f.endswith('.npz')]
-
 
     def rotate(self, img, mask, k=None):
         """ 90도 단위 회전 증강 """
@@ -60,18 +51,8 @@ class SliceDataset(Dataset):
 
     def __getitem__(self, item):
         # 1. 데이터 로딩
-        f_name = self.indices[item]
-        case = f_name.split('_')[0]
-        npz_path = os.path.join(self.load_path, f_name)
+        ct, mask, case = self.data_list[item]
         
-        try:
-            npz = np.load(npz_path, allow_pickle=True)
-            ct = npz.get('ct')
-            mask = npz.get('mask')
-        except Exception as e:
-            print(f"Error loading file: {npz_path}")
-            raise e
-
         # 2. 태스크별 마스크 전처리
         if self.task == 'organ':
             mask[mask > 0] = 1
@@ -103,6 +84,23 @@ class SliceDataset(Dataset):
         mask = torch.from_numpy(cut_384(mask.copy())).float()
 
         return ct, mask, case
+
+def get_data_list(data_path, indices):
+    result = []
+    for i, train_indice in enumerate(indices): 
+        f_name = train_indice[i]
+        case = f_name.split('_')[0]
+        npz_path = os.path.join(data_path, f_name)
+        try:
+            npz = np.load(npz_path, allow_pickle=True)
+            ct = npz.get('ct')
+            mask = npz.get('mask')
+            result.append((ct, mask, case))
+        except Exception as e:
+            print(f"Error loading file: {npz_path}")
+            raise e
+    return result
+
 
 def load_case_mapping(data_path):
     """

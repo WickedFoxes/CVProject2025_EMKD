@@ -1,7 +1,7 @@
 import torch
 from models import get_model
 from pl_model.base import BasePLModel
-from datasets.dataset import SliceDataset, load_case_mapping, split_train_val
+from datasets.dataset import SliceDataset, load_case_mapping, split_train_val, get_data_list
 
 from torch.utils.data import DataLoader
 from utils.loss_functions import calc_loss
@@ -41,9 +41,9 @@ class SegmentationPLModel(BasePLModel):
         self.measure(batch, output)
 
     def train_dataloader(self):
+        data_list = get_data_list(self.hparams.data_path, self.train_indices)
         dataset = SliceDataset(
-            data_path=self.hparams.data_path,
-            indices=self.train_indices,
+            data_list=data_list,
             task=self.hparams.task,
             dataset=self.hparams.dataset,
             train=True
@@ -51,9 +51,9 @@ class SegmentationPLModel(BasePLModel):
         return DataLoader(dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True)
 
     def test_dataloader(self):
+        data_list = get_data_list(self.hparams.data_path, self.val_indices)
         dataset = SliceDataset(
-            data_path=self.hparams.data_path,
-            indices=self.val_indices,
+            data_list=data_list,
             task=self.hparams.task,
             dataset=self.hparams.dataset,
             train=False
