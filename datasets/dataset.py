@@ -47,7 +47,7 @@ class SliceDataset(Dataset):
         return img, mask
 
     def __len__(self):
-        return len(self.indices)
+        return len(self.data_list)
 
     def __getitem__(self, item):
         # 1. 데이터 로딩
@@ -87,8 +87,7 @@ class SliceDataset(Dataset):
 
 def get_data_list(data_path, indices):
     result = []
-    for i, train_indice in enumerate(indices): 
-        f_name = train_indice[i]
+    for f_name in indices: 
         case = f_name.split('_')[0]
         npz_path = os.path.join(data_path, f_name)
         try:
