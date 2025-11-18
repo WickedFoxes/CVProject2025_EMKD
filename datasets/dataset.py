@@ -55,7 +55,7 @@ class SliceDataset(Dataset):
         return img, mask
 
     def __len__(self):
-        return len(self.data_list)
+        return len(self.indices)
 
     def __getitem__(self, item):
         # 1. 데이터 로딩
