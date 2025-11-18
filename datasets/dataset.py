@@ -14,7 +14,6 @@ class SliceDataset(Dataset):
                  dataset='kits',
                  train=True
         ):
-        """ 'lits' 데이터셋 전용 클래스 """
         super(SliceDataset, self).__init__()
         assert task in ['organ', 'tumor']
         
