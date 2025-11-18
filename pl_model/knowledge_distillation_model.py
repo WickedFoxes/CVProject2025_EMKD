@@ -3,7 +3,7 @@ from models import get_model
 from pl_model.base import BasePLModel
 from pl_model.segmentation_model import SegmentationPLModel
 from utils.loss_functions import prediction_map_distillation, importance_maps_distillation, region_affinity_distillation
-from datasets.dataset import SliceDataset, load_case_mapping, split_train_val, get_data_list
+from datasets.dataset import SliceDataset, load_case_mapping, split_train_val
 
 from torch.utils.data import DataLoader
 from utils.loss_functions import calc_loss
@@ -61,9 +61,9 @@ class KnowledgeDistillationPLModel(BasePLModel):
         self.measure(batch, output)
 
     def train_dataloader(self):
-        data_list = get_data_list(self.hparams.data_path, self.train_indices)
         dataset = SliceDataset(
-            data_list=data_list,
+            data_path=self.hparams.data_path,
+            indices=self.train_indices,
             task=self.hparams.task,
             dataset=self.hparams.dataset,
             train=True
@@ -71,9 +71,9 @@ class KnowledgeDistillationPLModel(BasePLModel):
         return DataLoader(dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True)
 
     def test_dataloader(self):
-        data_list = get_data_list(self.hparams.data_path, self.val_indices)
         dataset = SliceDataset(
-            data_list=data_list,
+            data_path=self.hparams.data_path,
+            indices=self.val_indices,
             task=self.hparams.task,
             dataset=self.hparams.dataset,
             train=False

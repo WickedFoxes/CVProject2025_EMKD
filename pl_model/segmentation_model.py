@@ -1,7 +1,7 @@
 import torch
 from models import get_model
 from pl_model.base import BasePLModel
-from datasets.dataset import SliceDataset, load_case_mapping, split_train_val, get_data_list
+from datasets.dataset import SliceDataset, load_case_mapping, split_train_val
 
 from torch.utils.data import DataLoader
 from utils.loss_functions import calc_loss
