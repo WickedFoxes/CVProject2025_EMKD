@@ -68,6 +68,7 @@ def main_k_fold():
     all_cases = load_case_mapping(args.data_path, args.task)
     all_cases = np.array(all_cases) # 인덱싱을 편하게 하기 위해 numpy array로 변환
     
+    case_ids = np.array(sorted(all_cases.keys()))
     kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
 
     for fold, (train_idx, val_idx) in enumerate(kfold.split(all_cases)):
@@ -75,11 +76,22 @@ def main_k_fold():
         print(f"Train: {len(train_idx)}, Val: {len(val_idx)}")
 
         # 인덱스를 이용해 실제 데이터 ID 리스트 추출
-        train_cases_fold = all_cases[train_idx].tolist()
-        val_cases_fold = all_cases[val_idx].tolist()
+        train_cases = case_ids[train_idx]
+        val_cases = case_ids[val_idx]
+
+        train_indices = []
+        for case_id in train_cases:
+            train_indices.extend(all_cases[case_id]['indices'])
+            
+        val_indices = []
+        for case_id in val_cases:
+            val_indices.extend(all_cases[case_id]['indices'])
+
+        print(f" - Cases: Train {len(train_cases)}, Val {len(val_cases)}")
+        print(f" - Slices: Train {len(train_indices)}, Val {len(val_indices)}")
         
         # 모델 초기화 (현재 Fold의 인덱스 전달)
-        model = KnowledgeDistillationPLModel(args, train_indices=train_cases_fold, val_indices=val_cases_fold)
+        model = KnowledgeDistillationPLModel(args, train_indices=train_indices, val_indices=val_indices)
 
         # Checkpoint: 파일명에 fold 정보를 포함시킵니다.
         checkpoint_callback = ModelCheckpoint(
