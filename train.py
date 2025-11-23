@@ -2,6 +2,10 @@ import os
 import argparse
 
 from pl_model.segmentation_model import SegmentationPLModel
+from datasets.dataset import load_case_mapping, split_train_val
+
+from sklearn.model_selection import KFold
+import numpy as np
 
 import torch
 from pytorch_lightning import Trainer, seed_everything
@@ -20,12 +24,18 @@ parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--num_workers', type=int, default=2)
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--dataset', type=str, default='kits', choices=['kits', 'lits'])
+parser.add_argument('--kfold', action='store_true', help='Enable 5-fold cross validation')
 
 def main():
     args = parser.parse_args()
     seed_everything(args.seed)
     
-    model = SegmentationPLModel(args)
+    case_mapping = load_case_mapping(args.data_path, args.task)
+    train_indices, val_indices = split_train_val(
+        case_mapping, train_ratio=0.8, seed=args.seed
+    )
+
+    model = SegmentationPLModel(args, train_indices, val_indices)
 
     # checkpoint
     checkpoint_callback = ModelCheckpoint(
@@ -48,6 +58,60 @@ def main():
     )
     trainer.fit(model)
 
+def main_k_fold():
+    args = parser.parse_args()
+    seed_everything(args.seed)
+    
+    all_cases = load_case_mapping(args.data_path, args.task)
+    all_cases = np.array(all_cases) # 인덱싱을 편하게 하기 위해 numpy array로 변환
+    
+    kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
+
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(all_cases)):
+        print(f"\nStart Training Fold: {fold} / 4")
+        print(f"Train: {len(train_idx)}, Val: {len(val_idx)}")
+
+        # 인덱스를 이용해 실제 데이터 ID 리스트 추출
+        train_cases_fold = all_cases[train_idx].tolist()
+        val_cases_fold = all_cases[val_idx].tolist()
+        
+        # 모델 초기화 (현재 Fold의 인덱스 전달)
+        model = SegmentationPLModel(args, train_indices=train_cases_fold, val_indices=val_cases_fold)
+
+        # Checkpoint: 파일명에 fold 정보를 포함시킵니다.
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=os.path.join(args.checkpoint_path, f'fold{fold}'), # 폴더를 fold별로 구분하거나
+            filename=f'checkpoint_{args.dataset}_{args.task}_{args.model}_fold{fold}_' + '{epoch}', # 파일명에 fold 명시
+            save_last=True,
+            save_top_k=5,
+            monitor='dice_class0',
+            mode='max',
+            verbose=True
+        )
+
+        # Logger: 버전 이름을 fold로 설정하여 텐서보드에서 겹치지 않게 합니다.
+        logger = TensorBoardLogger(
+            'log', 
+            name=f'{args.dataset}_{args.task}_{args.model}',
+            version=f'fold_{fold}' 
+        )
+
+        trainer = Trainer(
+            accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+            devices=1,
+            max_epochs=args.epochs, 
+            callbacks=[checkpoint_callback], 
+            logger=logger
+        )
+        
+        # 학습 시작
+        trainer.fit(model)
+        
+        # (선택 사항) 메모리 정리를 위해 모델과 트레이너 삭제 및 캐시 비우기
+        del model, trainer
+        torch.cuda.empty_cache()
+
+
 
 def test():
     args = parser.parse_args()
@@ -64,6 +128,9 @@ def test():
 if __name__ == '__main__':
     args = parser.parse_args()
     if args.mode == 'train':
-        main()
+        if args.kfold:
+            main_k_fold()
+        else:
+            main()
     if args.mode == 'test':
         test()

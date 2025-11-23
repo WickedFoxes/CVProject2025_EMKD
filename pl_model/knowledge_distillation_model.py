@@ -14,7 +14,7 @@ beta1 = 0.9
 beta2 = 0.9
 
 class KnowledgeDistillationPLModel(BasePLModel):
-    def __init__(self, params):
+    def __init__(self, params, train_indices, val_indices):
         super(KnowledgeDistillationPLModel, self).__init__()
         self.save_hyperparameters(params)
 
@@ -25,10 +25,6 @@ class KnowledgeDistillationPLModel(BasePLModel):
         # student net
         self.net = get_model(self.hparams.smodel, channels=2)
 
-        case_mapping = load_case_mapping(self.hparams.data_path, self.hparams.task)
-        train_indices, val_indices = split_train_val(
-            case_mapping, train_ratio=0.8, seed=self.hparams.seed
-        )
         self.train_indices = train_indices
         self.val_indices = val_indices
 
