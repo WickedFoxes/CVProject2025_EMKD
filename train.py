@@ -63,7 +63,6 @@ def main_k_fold():
     seed_everything(args.seed)
     
     all_cases = load_case_mapping(args.data_path, args.task)
-    all_cases = np.array(all_cases) # 인덱싱을 편하게 하기 위해 numpy array로 변환
     
     case_ids = np.array(sorted(all_cases.keys()))
     kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
