@@ -64,7 +64,7 @@ class BasePLModel(LightningModule):
             self.log('voe_class{}'.format(i), scores[i][1].item())
             self.log('rvd_class{}'.format(i), scores[i][2].item())
 
-            print("")
+            print("Epoch[{}]".format(self.current_epoch))
             print('dice_class{}: {}'.format(i, scores[i][0].item()))
             print('voe_class{}: {}'.format(i, scores[i][1].item()))
             print('rvd_class{}: {}'.format(i, scores[i][2].item()))
