@@ -54,6 +54,7 @@ def main():
         devices=1,
         max_epochs=args.epochs, 
         callbacks=[checkpoint_callback], 
+        enable_progress_bar=False,
         logger=logger
     )
     trainer.fit(model)
@@ -112,6 +113,7 @@ def main_k_fold():
             devices=1,
             max_epochs=args.epochs, 
             callbacks=[checkpoint_callback], 
+            enable_progress_bar=False,
             logger=logger
         )
         
