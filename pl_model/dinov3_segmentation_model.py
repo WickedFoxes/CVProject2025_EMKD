@@ -12,7 +12,7 @@ class Dinov3SegmentationPLModel(BasePLModel):
     def __init__(self, params, train_indices, val_indices):
         super(Dinov3SegmentationPLModel, self).__init__()
         self.save_hyperparameters(params)
-        self.net = get_model(self.hparams.model, channels=2, checkpoint_path=self.hparams.checkpoint_path)
+        self.net = get_model(self.hparams.model, channels=2, checkpoint_path=self.hparams.vit_checkpoint_path)
         
         self.train_indices = train_indices
         self.val_indices = val_indices
