@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 from models import get_model
 from pl_model.base import BasePLModel
-from datasets.dataset import SliceDataset, load_case_mapping, split_train_val
+from datasets.dataset import SliceDataset
 
 from torch.utils.data import DataLoader
 from utils.loss_functions import calc_loss
@@ -12,13 +12,19 @@ class Dinov3SegmentationPLModel(BasePLModel):
     def __init__(self, params, train_indices, val_indices):
         super(Dinov3SegmentationPLModel, self).__init__()
         self.save_hyperparameters(params)
-        self.net = get_model(self.hparams.model, channels=2, checkpoint_path=self.hparams.vit_checkpoint_path)
+        
+        # ViT/DINO 계열은 체크포인트 로드가 중요하므로 해당 인자 유지
+        self.net = get_model(
+            self.hparams.model, 
+            channels=2, 
+            checkpoint_path=self.hparams.vit_checkpoint_path
+        )
         
         self.train_indices = train_indices
         self.val_indices = val_indices
 
-
     def forward(self, x):
+        # 모델이 (output, aux1, aux2) 형태의 튜플을 반환한다고 가정
         output, _, _ = self.net(x)
         return output
 
@@ -27,15 +33,23 @@ class Dinov3SegmentationPLModel(BasePLModel):
         output = self.forward(ct)
         loss = calc_loss(output, mask)  # Dice_loss Used
 
-        return {'loss': loss}
+        # [수정 1] Loss 로깅 추가 (Lightning 2.x 권장)
+        # on_epoch=True: epoch 단위 평균 자동 계산
+        # prog_bar=True: 진행바에 표시
+        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+
+        # [수정 2] 딕셔너리가 아닌 loss 텐서 반환
+        return loss
 
     def validation_step(self, batch, batch_idx):
-        return self.test_step(batch, batch_idx)
+        # BasePLModel의 measure 메서드를 활용하기 위해 test_step 호출
+        self.test_step(batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
         ct, mask, name = batch
         output = self.forward(ct)
 
+        # BasePLModel에 정의된 measure 메서드로 Dice Score 등 계산
         self.measure(batch, output)
 
     def train_dataloader(self):
@@ -46,13 +60,14 @@ class Dinov3SegmentationPLModel(BasePLModel):
             dataset=self.hparams.dataset,
             train=True
         )
+        # collate_fn이 필요한 경우 주석 해제하여 사용
         return DataLoader(
             dataset, 
             batch_size=self.hparams.batch_size, 
             num_workers=self.hparams.num_workers, 
             pin_memory=True, 
             shuffle=True,
-            # collate_fn=self.pad_collate_fn,
+            # collate_fn=self.pad_collate_fn, 
         )
 
     def test_dataloader(self):
@@ -75,54 +90,20 @@ class Dinov3SegmentationPLModel(BasePLModel):
         return self.test_dataloader()
 
     def configure_optimizers(self):
+        # [설정 유지] Transformer 계열 학습에 중요한 AdamW 설정 유지
+        # betas=(0.9, 0.98)은 ViT 논문 등에서 자주 사용되는 설정입니다.
         opt = torch.optim.AdamW(
             self.parameters(), 
-            weight_decay=5e-2,    # 문구의 5 x 10^-2 반영
-            betas=(0.9, 0.98)     # 문구의 설정 유지
+            lr=self.hparams.lr,
+            weight_decay=5e-2, 
+            betas=(0.9, 0.98)  
         )
-        scheduler = {'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.hparams.epochs, eta_min=1e-6),
-                     'interval': 'epoch',
-                     'frequency': 1}
-        return [opt], [scheduler]
-    
-    def pad_collate_fn(self, batch):
-        # batch는 Dataset의 __getitem__이 리턴하는 항목들의 리스트입니다.
-
-        batch_ct = []
-        batch_mask = []
-        batch_case = []
         
-        patch_size = 28
-
-        for ct, mask, case in batch:
-            # 현재 이미지의 높이(h), 너비(w) 구하기
-            # shape가 (C, H, W) 혹은 (H, W)라고 가정
-            h, w = ct.shape[-2], ct.shape[-1]
-
-            # 28로 나누어 떨어지기 위해 필요한 패딩 계산
-            # (나머지가 0이면 패딩은 0이 됩니다)
-            pad_h = (patch_size - (h % patch_size)) % patch_size
-            pad_w = (patch_size - (w % patch_size)) % patch_size
-
-            # 2. 패딩이 필요한 경우 양옆/위아래로 분배
-            if pad_h > 0 or pad_w > 0:
-                # 너비 패딩 분배
-                pad_left = pad_w // 2
-                pad_right = pad_w - pad_left  # 홀수일 경우 오른쪽에 1픽셀 더 추가
-                
-                # 높이 패딩 분배
-                pad_top = pad_h // 2
-                pad_bottom = pad_h - pad_top  # 홀수일 경우 아래쪽에 1픽셀 더 추가
-
-                # 3. F.pad 적용 (순서: Left, Right, Top, Bottom)
-                ct = F.pad(ct, (pad_left, pad_right, pad_top, pad_bottom), mode='constant', value=0)
-                mask = F.pad(mask, (pad_left, pad_right, pad_top, pad_bottom), mode='constant', value=0)
-
-            batch_ct.append(ct)
-            batch_mask.append(mask)
-            batch_case.append(case)
-
-        batch_ct = torch.stack(batch_ct)      # (B, C, H, W)
-        batch_mask = torch.stack(batch_mask)  # (B, C, H, W) 혹은 (B, H, W)
-
-        return batch_ct, batch_mask, batch_case
+        scheduler = {
+            'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(
+                opt, T_max=self.hparams.epochs, eta_min=1e-6
+            ),
+            'interval': 'epoch',
+            'frequency': 1
+        }
+        return [opt], [scheduler]

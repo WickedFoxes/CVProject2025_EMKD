@@ -1,5 +1,6 @@
 import os
 import argparse
+import gc # 가비지 컬렉션을 위해 추가
 
 from pl_model.segmentation_model import SegmentationPLModel
 from datasets.dataset import load_case_mapping, split_train_val
@@ -8,6 +9,7 @@ from sklearn.model_selection import KFold
 import numpy as np
 
 import torch
+# PyTorch Lightning 2.x에서는 lightning.pytorch를 권장하지만, 호환성을 위해 유지
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -26,21 +28,28 @@ parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--dataset', type=str, default='kits', choices=['kits', 'lits'])
 parser.add_argument('--kfold', action='store_true', help='Enable 5-fold cross validation')
 
+def get_default_indices(args):
+    """Test 모드 등에서 기본 Split 인덱스를 가져오기 위한 헬퍼 함수"""
+    case_mapping = load_case_mapping(args.data_path, args.task)
+    return split_train_val(case_mapping, train_ratio=0.8, seed=args.seed)
+
 def main():
     args = parser.parse_args()
-    seed_everything(args.seed)
+    seed_everything(args.seed, workers=True) # workers=True로 데이터 로더 시드까지 고정
     
+    # 1. 데이터 Split
     case_mapping = load_case_mapping(args.data_path, args.task)
     train_indices, val_indices = split_train_val(
         case_mapping, train_ratio=0.8, seed=args.seed
     )
 
+    # 2. 모델 초기화
     model = SegmentationPLModel(args, train_indices, val_indices)
 
-    # checkpoint
+    # 3. Checkpoint 설정
     checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join(args.checkpoint_path),
-        filename='checkpoint_%s_%s_%s_{epoch}' % (args.dataset, args.task, args.model),
+        dirpath=args.checkpoint_path,
+        filename=f'checkpoint_{args.dataset}_{args.task}_{args.model}_' + '{epoch}',
         save_last=True,
         save_top_k=5,
         monitor='dice_class0',
@@ -48,29 +57,35 @@ def main():
         verbose=True
     )
 
-    logger = TensorBoardLogger('log', name='%s_%s_%s' % (args.dataset, args.task, args.model))
+    # 4. Logger 설정
+    logger = TensorBoardLogger('log', name=f'{args.dataset}_{args.task}_{args.model}')
+    
+    # 5. Trainer 설정
     trainer = Trainer(
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
-        devices=1,
+        devices=1, # GPU 개수 (필요시 args로 받도록 수정 가능)
         max_epochs=args.epochs, 
         callbacks=[checkpoint_callback], 
-        enable_progress_bar=False,
-        logger=logger
+        enable_progress_bar=False, # 코랩에서 프로그레스바 출력으로 과도하게 남음
+        logger=logger,
+        log_every_n_steps=10 # 로깅 빈도 설정
     )
+    
     trainer.fit(model)
 
 def main_k_fold():
     args = parser.parse_args()
-    seed_everything(args.seed)
+    seed_everything(args.seed, workers=True)
     
     all_cases = load_case_mapping(args.data_path, args.task)
-    
     case_ids = np.array(sorted(all_cases.keys()))
+    
     kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
 
     for fold, (train_idx, val_idx) in enumerate(kfold.split(case_ids)):
-        print(f"\nStart Training Fold: {fold} / 4")
-        print(f"Train: {len(train_idx)}, Val: {len(val_idx)}")
+        print(f"\n{'='*20}")
+        print(f"Start Training Fold: {fold} / 4")
+        print(f"{'='*20}")
 
         # 인덱스를 이용해 실제 데이터 ID 리스트 추출
         train_cases = case_ids[train_idx]
@@ -90,10 +105,10 @@ def main_k_fold():
         # 모델 초기화 (현재 Fold의 인덱스 전달)
         model = SegmentationPLModel(args, train_indices=train_indices, val_indices=val_indices)
 
-        # Checkpoint: 파일명에 fold 정보를 포함시킵니다.
+        # Checkpoint: 폴더 구조로 fold 구분
         checkpoint_callback = ModelCheckpoint(
-            dirpath=os.path.join(args.checkpoint_path, f'fold{fold}'), # 폴더를 fold별로 구분하거나
-            filename=f'checkpoint_{args.dataset}_{args.task}_{args.model}_fold{fold}_' + '{epoch}', # 파일명에 fold 명시
+            dirpath=os.path.join(args.checkpoint_path, f'fold{fold}'),
+            filename=f'checkpoint_{args.dataset}_{args.task}_{args.model}_fold{fold}_' + '{epoch}',
             save_last=True,
             save_top_k=5,
             monitor='dice_class0',
@@ -101,7 +116,6 @@ def main_k_fold():
             verbose=True
         )
 
-        # Logger: 버전 이름을 fold로 설정하여 텐서보드에서 겹치지 않게 합니다.
         logger = TensorBoardLogger(
             'log', 
             name=f'{args.dataset}_{args.task}_{args.model}',
@@ -114,36 +128,57 @@ def main_k_fold():
             max_epochs=args.epochs, 
             callbacks=[checkpoint_callback], 
             enable_progress_bar=False,
-            logger=logger
+            logger=logger,
+            log_every_n_steps=10
         )
         
-        # 학습 시작
         trainer.fit(model)
         
-        # (선택 사항) 메모리 정리를 위해 모델과 트레이너 삭제 및 캐시 비우기
+        # 메모리 정리 (중요)
         del model, trainer
+        gc.collect() 
         torch.cuda.empty_cache()
-
-
 
 def test():
     args = parser.parse_args()
+    
+    # [중요 수정] load_from_checkpoint 호출 시 __init__에 필요한 인자를 넘겨줘야 함
+    # 저장된 hparams에는 train_indices, val_indices 같은 대용량 리스트는 보통 포함되지 않기 때문입니다.
+    # 여기서는 기본 Split(main 함수 로직)을 기준으로 인덱스를 재생성하여 전달합니다.
+    # 만약 K-Fold 특정 Fold를 테스트하려면 해당 로직에 맞는 인덱스를 구해서 넣어야 합니다.
+    train_indices, val_indices = get_default_indices(args)
+
+    ckpt_path = os.path.join(args.checkpoint_path, 'last.ckpt')
+    if not os.path.exists(ckpt_path):
+        print(f"Checkpoint not found: {ckpt_path}")
+        return
+
+    print(f"Loading checkpoint from: {ckpt_path}")
+    
+    # args=args는 hparams에 저장된 args와 충돌할 수 있으나, 덮어쓰기 위해 전달 가능
+    # 중요한 건 train_indices와 val_indices를 전달하는 것입니다.
     model = SegmentationPLModel.load_from_checkpoint(
-        checkpoint_path=os.path.join(args.checkpoint_path, 'last.ckpt')
+        checkpoint_path=ckpt_path,
+        params=args, # 만약 __init__에서 params를 쓴다면 명시
+        train_indices=train_indices,
+        val_indices=val_indices
     )
+    
     trainer = Trainer(
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         devices=1,
+        enable_progress_bar=True
     )
+    
     trainer.test(model)
-
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    
     if args.mode == 'train':
         if args.kfold:
             main_k_fold()
         else:
             main()
-    if args.mode == 'test':
+    elif args.mode == 'test':
         test()
