@@ -13,6 +13,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 parser = argparse.ArgumentParser('train')
+parser.add_argument('--model', type=str, default='dinov3_vit')
 parser.add_argument('--data_path', type=str, default='/data/kits/data')
 parser.add_argument('--vit_checkpoint_path', type=str, default='/data/checkpoints')
 parser.add_argument('--checkpoint_path', type=str, default='/data/checkpoints')
