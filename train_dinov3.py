@@ -88,7 +88,7 @@ def main_k_fold():
         print(f" - Slices: Train {len(train_indices)}, Val {len(val_indices)}")
         
         # 모델 초기화 (현재 Fold의 인덱스 전달)
-        model = SegmentationPLModel(args, train_indices=train_indices, val_indices=val_indices)
+        model = Dinov3SegmentationPLModel(args, train_indices, val_indices)
 
         # Checkpoint: 파일명에 fold 정보를 포함시킵니다.
         checkpoint_callback = ModelCheckpoint(

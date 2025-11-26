@@ -4,7 +4,7 @@ from .dinov3_vision_transformer import build_dinov3_base_primus_multiscale_with_
 
 
 def get_model(model_name: str, channels: int, **kwargs):
-    assert model_name.lower() in ['enet', 'raunet']
+    assert model_name.lower() in ['enet', 'raunet', 'dinov3']
     if model_name.lower() == 'raunet':
         model = RAUNet(num_classes=channels)
     elif model_name.lower() == 'enet':
