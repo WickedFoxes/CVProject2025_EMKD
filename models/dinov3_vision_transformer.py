@@ -46,7 +46,7 @@ def build_dinov3_base_primus_multiscale_with_new_patch_size(
         raise FileNotFoundError(f"Checkpoint not found at {checkpoint_path}")
         
     state_dict = torch.load(checkpoint_path, map_location="cpu")
-    
+    print(state_dict)
     # DINO 체크포인트 구조에 따라 state_dict 키 처리 (teacher, student, model 등)
     if "teacher" in state_dict:
         state_dict = state_dict["teacher"]
@@ -55,8 +55,21 @@ def build_dinov3_base_primus_multiscale_with_new_patch_size(
     elif "model" in state_dict:
         state_dict = state_dict["model"]
         
-    # 'module.' 접두사가 붙어있는 경우 제거 (DDP 학습된 모델인 경우)
-    state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+    # 'module.', 'backbone.' 접두사 제거
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        name = k
+        # 1. DataParallel 등으로 생긴 'module.' 제거
+        if name.startswith("module."):
+            name = name[7:]  # 'module.'의 길이만큼 자름
+            
+        # 2. 모델 구조 차이로 생긴 'backbone.' 제거
+        if name.startswith("backbone."):
+            name = name[9:]  # 'backbone.'의 길이만큼 자름
+            
+        new_state_dict[name] = v
+
+    state_dict = new_state_dict
 
     # 2. 새로운 patch_size로 모델 초기화
     # kwargs를 통해 depth, embed_dim 등을 전달받거나 기본값 사용
