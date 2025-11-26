@@ -25,7 +25,8 @@ class Dinov3SegmentationPLModel(BasePLModel):
 
     def forward(self, x):
         # 모델이 (output, aux1, aux2) 형태의 튜플을 반환한다고 가정
-        output, _, _ = self.net(x)
+        output = self.net(x)
+        # output, _, _ = self.net(x)
         return output
 
     def training_step(self, batch, batch_idx):
