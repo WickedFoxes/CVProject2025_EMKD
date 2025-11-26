@@ -60,7 +60,7 @@ networkx
 nibabel==5.3.2
 -e git+https://git@github.com/ricklisz/MedDINOv3.git@db54b81b7b0623784588f4ddfa00330769432c36#egg=nnunetv2&subdirectory=nnUNet
 numexpr==2.11.0
-numpy
+numpy==2.3.5
 omegaconf==2.3.0
 packaging
 pandas==2.3.2
@@ -112,7 +112,6 @@ urllib3
 wcwidth
 yacs==0.1.8
 zipp
-
-pytorch-lightning
-torchmetrics
+pytorch-lightning==2.5.6
+torchmetrics==1.8.2
 opencv-python

@@ -82,3 +82,14 @@ class SegmentationPLModel(BasePLModel):
     # Lightning 구버전 호환성을 위해 유지 (최신 버전에서는 val_dataloader라고 명시해도 됨)
     def val_dataloader(self):
         return self.test
+
+    def configure_optimizers(self):
+        opt = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, betas=(0.9, 0.999))
+        scheduler = {
+            'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(
+                opt, T_max=self.hparams.epochs, eta_min=1e-6
+            ),
+            'interval': 'epoch',
+            'frequency': 1
+        }
+        return [opt], [scheduler]
