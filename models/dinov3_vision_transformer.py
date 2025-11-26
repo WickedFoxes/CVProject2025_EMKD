@@ -46,7 +46,8 @@ def build_dinov3_base_primus_multiscale_with_new_patch_size(
         raise FileNotFoundError(f"Checkpoint not found at {checkpoint_path}")
         
     state_dict = torch.load(checkpoint_path, map_location="cpu")
-    print(state_dict)
+    print("###### checkpoint dict keys ######")
+    print(state_dict.keys())
     # DINO 체크포인트 구조에 따라 state_dict 키 처리 (teacher, student, model 등)
     if "teacher" in state_dict:
         state_dict = state_dict["teacher"]
@@ -75,6 +76,8 @@ def build_dinov3_base_primus_multiscale_with_new_patch_size(
     # kwargs를 통해 depth, embed_dim 등을 전달받거나 기본값 사용
     print(f"Creating model with new patch_size={new_patch_size}...")
     model = vit_base(patch_size=new_patch_size, drop_path_rate=0.2, layerscale_init=1.0e-05)
+    print("###### model ######")
+    print(model)
 
     # 3. Patch Embedding 가중치 리사이징 (핵심 로직)
     # 일반적인 timm/DINO 구현에서 patch_embed는 Conv2d를 포함하며 이름은 보통 'proj'입니다.
