@@ -1,6 +1,6 @@
 from .ENet import ENet
 from .RAUNet import RAUNet
-from .dinov3_vision_transformer import build_dinov3_base_primus_multiscale_with_new_patch_size
+from .dinov3_vision_transformer import build_dinov3_base_primus_multiscale
 
 
 def get_model(model_name: str, channels: int, **kwargs):
@@ -10,9 +10,8 @@ def get_model(model_name: str, channels: int, **kwargs):
     elif model_name.lower() == 'enet':
         model = ENet(num_classes=channels)
     elif model_name.lower() == 'dinov3_vit':
-        model = build_dinov3_base_primus_multiscale_with_new_patch_size(
+        model = build_dinov3_base_primus_multiscale(
             num_classes=channels,
             checkpoint_path = kwargs["checkpoint_path"],
-            # new_patch_size=28,
         )
     return model

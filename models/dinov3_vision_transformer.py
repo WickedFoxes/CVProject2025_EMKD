@@ -20,7 +20,7 @@ from dynamic_network_architectures.building_blocks.patch_encode_decode import La
 from dynamic_network_architectures.initialization.weight_init import InitWeights_He
 
 
-__all__ = ['DinoVisionTransformer', 'build_dinov3_base_primus_multiscale_with_new_patch_size']
+__all__ = ['DinoVisionTransformer', 'build_dinov3_base_primus_multiscale']
 
 logger = logging.getLogger("dinov3")
 
@@ -35,7 +35,7 @@ def vit_base(patch_size=16, **kwargs):
     )
     return model
 
-def build_dinov3_base_primus_multiscale_with_resize(
+def build_dinov3_base_primus_multiscale(
     num_classes: int,
     checkpoint_path: str,
     **kwargs
