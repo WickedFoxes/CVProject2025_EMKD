@@ -81,7 +81,7 @@ class SegmentationPLModel(BasePLModel):
 
     # Lightning 구버전 호환성을 위해 유지 (최신 버전에서는 val_dataloader라고 명시해도 됨)
     def val_dataloader(self):
-        return self.test
+        return self.test_dataloader()
 
     def configure_optimizers(self):
         opt = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, betas=(0.9, 0.999))
