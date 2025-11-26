@@ -45,17 +45,13 @@ def build_dinov3_base_primus_multiscale_with_new_patch_size(
     if not os.path.isfile(checkpoint_path):
         raise FileNotFoundError(f"Checkpoint not found at {checkpoint_path}")
         
-    state_dict = torch.load(checkpoint_path, map_location="cpu")
-    print("###### checkpoint dict keys ######")
-    print(state_dict.keys())
-    # DINO 체크포인트 구조에 따라 state_dict 키 처리 (teacher, student, model 등)
+    state_dict = torch.load(checkpoint_path, map_location="cpu")    
     if "teacher" in state_dict:
         state_dict = state_dict["teacher"]
-    elif "student" in state_dict:
-        state_dict = state_dict["student"]
-    elif "model" in state_dict:
-        state_dict = state_dict["model"]
-        
+    
+    print("###### checkpoint dict keys ######")
+    print(state_dict.keys())
+
     # 'module.', 'backbone.' 접두사 제거
     new_state_dict = {}
     for k, v in state_dict.items():
