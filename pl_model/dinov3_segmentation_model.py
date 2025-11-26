@@ -48,11 +48,11 @@ class Dinov3SegmentationPLModel(BasePLModel):
         )
         return DataLoader(
             dataset, 
-            collate_fn=self.pad_collate_fn,
             batch_size=self.hparams.batch_size, 
             num_workers=self.hparams.num_workers, 
             pin_memory=True, 
-            shuffle=True
+            shuffle=True,
+            # collate_fn=self.pad_collate_fn,
         )
 
     def test_dataloader(self):
@@ -65,10 +65,10 @@ class Dinov3SegmentationPLModel(BasePLModel):
         )
         return DataLoader(
             dataset, 
-            collate_fn=self.pad_collate_fn,
             batch_size=self.hparams.batch_size, 
             num_workers=self.hparams.num_workers, 
-            pin_memory=True
+            pin_memory=True,
+            # collate_fn=self.pad_collate_fn,
         )
 
     def val_dataloader(self):

@@ -35,10 +35,9 @@ def vit_base(patch_size=16, **kwargs):
     )
     return model
 
-def build_dinov3_base_primus_multiscale_with_new_patch_size(
+def build_dinov3_base_primus_multiscale_with_resize(
     num_classes: int,
     checkpoint_path: str,
-    new_patch_size: int = 28,
     **kwargs
 ):
     # 1. 체크포인트 로드
@@ -46,65 +45,20 @@ def build_dinov3_base_primus_multiscale_with_new_patch_size(
         raise FileNotFoundError(f"Checkpoint not found at {checkpoint_path}")
         
     state_dict = torch.load(checkpoint_path, map_location="cpu")    
-    if "teacher" in state_dict:
-        state_dict = state_dict["teacher"]
+    state_dict = state_dict['teacher']
+    state_dict = {
+        k.replace('backbone.', ''): v
+        for k, v in state_dict.items()
+        if 'ibot' not in k and 'dino_head' not in k
+    }
 
-    # 'module.', 'backbone.' 접두사 제거
-    new_state_dict = {}
-    for k, v in state_dict.items():
-        name = k
-        # 1. DataParallel 등으로 생긴 'module.' 제거
-        if name.startswith("module."):
-            name = name[7:]  # 'module.'의 길이만큼 자름
-            
-        # 2. 모델 구조 차이로 생긴 'backbone.' 제거
-        if name.startswith("backbone."):
-            name = name[9:]  # 'backbone.'의 길이만큼 자름
-            
-        new_state_dict[name] = v
-
-    state_dict = new_state_dict
-
-    # 2. 새로운 patch_size로 모델 초기화
-    # kwargs를 통해 depth, embed_dim 등을 전달받거나 기본값 사용
-    print(f"Creating model with new patch_size={new_patch_size}...")
+    # 2. 모델 초기화
     model = vit_base(drop_path_rate=0.2, layerscale_init=1.0e-05, n_storage_tokens=4, 
                         qkv_bias = False, mask_k_bias= True)
 
-    # 3. Patch Embedding 가중치 리사이징 (핵심 로직)
-    # 일반적인 timm/DINO 구현에서 patch_embed는 Conv2d를 포함하며 이름은 보통 'proj'입니다.
-    patch_embed_key = "patch_embed.proj.weight"
-    
-    if patch_embed_key in state_dict:
-        old_weight = state_dict[patch_embed_key] # Shape: [embed_dim, in_chans, old_h, old_w]
-        new_weight_shape = model.patch_embed.proj.weight.shape
-        
-        if old_weight.shape != new_weight_shape:
-            print(f"Resizing patch_embed weights: {old_weight.shape} -> {new_weight_shape}")
-            
-            # 가중치 보간 (Bicubic 사용)
-            # F.interpolate는 [Batch, Channel, H, W]를 기대하므로 그대로 넣어도 됩니다.
-            # old_weight는 [Out_Ch, In_Ch, KH, KW] 형태입니다.
-            new_weight = F.interpolate(
-                old_weight, 
-                size=(new_patch_size, new_patch_size), 
-                mode='bicubic', 
-                align_corners=False
-            )
-            
-            # 리사이징된 가중치로 state_dict 업데이트
-            state_dict[patch_embed_key] = new_weight
-    else:
-        print(f"Warning: '{patch_embed_key}' not found in checkpoint. Skipping patch_embed resizing.")
-
-    # 4. Positional Embedding 처리 (RoPE 사용 시)
-    # 제공해주신 코드는 RoPE(Rotary Positional Embedding)를 사용하므로
-    # 절대 위치 임베딩(Absolute Pos Embed)을 리사이징할 필요가 없습니다.
-    # 만약 절대 위치 임베딩을 사용하는 구형 ViT라면 여기서 pos_embed 리사이징 로직이 추가로 필요합니다.
-
-    # 5. 수정된 state_dict 로드
+    # 3. 수정된 state_dict 로드
     missing, unexpected = model.load_state_dict(state_dict, strict=True)
-    primus = Primus_Multiscale(embed_dim=768, patch_embed_size=new_patch_size, num_classes=num_classes, 
+    primus = Primus_Multiscale(embed_dim=768, patch_embed_size=16, num_classes=num_classes, 
                             dino_encoder=model, interaction_indices=[2,5,8,11])
     
     return primus

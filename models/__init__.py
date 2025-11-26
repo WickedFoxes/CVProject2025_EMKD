@@ -13,6 +13,6 @@ def get_model(model_name: str, channels: int, **kwargs):
         model = build_dinov3_base_primus_multiscale_with_new_patch_size(
             num_classes=channels,
             checkpoint_path = kwargs["checkpoint_path"],
-            new_patch_size=28,
+            # new_patch_size=28,
         )
     return model
