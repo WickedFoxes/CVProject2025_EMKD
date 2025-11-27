@@ -19,7 +19,12 @@ class Dinov3SegmentationPLModel(BasePLModel):
             channels=2, 
             checkpoint_path=self.hparams.vit_checkpoint_path
         )
-        
+        self.initial_lr = self.hparams.lr
+        self.vit_lr = 3e-5
+        self.weight_decay = 5e-2
+        self.vit_weight_decay = 5e-2
+        self.num_epochs = self.hparams.epochs
+        self.warmup_epochs = int(self.num_epochs * 0.1)
         self.train_indices = train_indices
         self.val_indices = val_indices
 
@@ -90,21 +95,59 @@ class Dinov3SegmentationPLModel(BasePLModel):
     def val_dataloader(self):
         return self.test_dataloader()
 
-    def configure_optimizers(self):
-        # [설정 유지] Transformer 계열 학습에 중요한 AdamW 설정 유지
-        # betas=(0.9, 0.98)은 ViT 논문 등에서 자주 사용되는 설정입니다.
-        opt = torch.optim.AdamW(
-            self.parameters(), 
-            lr=self.hparams.lr,
-            weight_decay=5e-2, 
-            betas=(0.9, 0.98)  
-        )
+    # def configure_optimizers(self):
+    #     # [설정 유지] Transformer 계열 학습에 중요한 AdamW 설정 유지
+    #     # betas=(0.9, 0.98)은 ViT 논문 등에서 자주 사용되는 설정입니다.
+    #     opt = torch.optim.AdamW(
+    #         self.parameters(), 
+    #         lr=self.hparams.lr,
+    #         weight_decay=5e-2, 
+    #         betas=(0.9, 0.98)  
+    #     )
         
+    #     scheduler = {
+    #         'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(
+    #             opt, T_max=self.hparams.epochs, eta_min=1e-6
+    #         ),
+    #         'interval': 'epoch',
+    #         'frequency': 1
+    #     }
+    #     return [opt], [scheduler]
+
+    def configure_optimizers(self):
+        # Split parameters into two groups: vit and the rest.
+        vit_params = []
+        other_params = []
+        for name, param in self.net.named_parameters():
+            if 'dino_encoder' in name:
+                vit_params.append(param)
+            else:
+                other_params.append(param)
+        
+        optimizer = torch.optim.AdamW([
+            {'params': other_params, 'lr': self.initial_lr, 'weight_decay': self.weight_decay},
+            {'params': vit_params, 'lr': self.vit_lr, 'weight_decay': self.vit_weight_decay}
+        ], betas = (0.9, 0.98))
+
+        def lr_lambda(current_epoch):
+            # Linear warmup phase.
+            if current_epoch < self.warmup_epochs:
+                # 0.0 ~ 1.0 까지 선형적으로 증가 (혹은 아주 작은 값부터 시작하고 싶다면 조정 가능)
+                # 이렇게 하면 각 그룹은 (0 ~ 1.0) * (자기 자신의 lr) 로 동작하므로 비율이 깨지지 않음
+                return float(current_epoch + 1) / float(self.warmup_epochs)
+            else:
+                power = 1.0
+                # 전체 진행도 계산
+                progress = (current_epoch - self.warmup_epochs) / (self.num_epochs - self.warmup_epochs)
+                return max(0.0, (1 - progress) ** power)
+
+        # Create the scheduler that uses the lambda function.
+        lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+
         scheduler = {
-            'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(
-                opt, T_max=self.hparams.epochs, eta_min=1e-6
-            ),
+            'scheduler': lr_scheduler,
             'interval': 'epoch',
-            'frequency': 1
+            'frequency': 1,
+            'name': 'learning_rate',
         }
-        return [opt], [scheduler]
+        return [optimizer], [scheduler]
