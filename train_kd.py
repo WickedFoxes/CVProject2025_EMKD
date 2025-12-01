@@ -27,6 +27,10 @@ parser.add_argument('--num_workers', type=int, default=2)
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--dataset', type=str, default='kits', choices=['kits', 'lits'])
 parser.add_argument('--kfold', action='store_true', help='Enable 5-fold cross validation')
+parser.add_argument('--alpha', type=float, default=0.1)
+parser.add_argument('--beta1', type=float, default=0.9)
+parser.add_argument('--beta2', type=float, default=0.9)
+
 
 def get_default_indices(args):
     """Test 모드 등에서 기본 Split 인덱스를 가져오기 위한 헬퍼 함수"""

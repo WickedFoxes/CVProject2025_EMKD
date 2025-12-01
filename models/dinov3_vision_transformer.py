@@ -1110,7 +1110,7 @@ class Primus_Multiscale(AbstractDynamicNetworkArchitectures):
         hier = self.dino_encoder.get_intermediate_layers(x,  n=self.interaction_indices, reshape = True)
         hier = torch.cat(hier, dim=1)
         dec_out = self.up_projection(hier)
-        return dec_out
+        return dec_out, hier[0], hier[1]
 
     def compute_conv_feature_map_size(self, input_size):
         raise NotImplementedError("yuck")

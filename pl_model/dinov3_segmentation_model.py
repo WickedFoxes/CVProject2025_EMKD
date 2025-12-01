@@ -11,9 +11,7 @@ from utils.loss_functions import calc_loss
 class Dinov3SegmentationPLModel(BasePLModel):
     def __init__(self, params, train_indices, val_indices):
         super(Dinov3SegmentationPLModel, self).__init__()
-        self.save_hyperparameters(params)
-        
-        # ViT/DINO 계열은 체크포인트 로드가 중요하므로 해당 인자 유지
+        self.save_hyperparameters(params)        
         self.net = get_model(
             self.hparams.model, 
             channels=2, 
@@ -30,8 +28,8 @@ class Dinov3SegmentationPLModel(BasePLModel):
 
     def forward(self, x):
         # 모델이 (output, aux1, aux2) 형태의 튜플을 반환한다고 가정
-        output = self.net(x)
-        # output, _, _ = self.net(x)
+        # output = self.net(x)
+        output, _, _ = self.net(x)
         return output
 
     def training_step(self, batch, batch_idx):
@@ -94,25 +92,6 @@ class Dinov3SegmentationPLModel(BasePLModel):
 
     def val_dataloader(self):
         return self.test_dataloader()
-
-    # def configure_optimizers(self):
-    #     # [설정 유지] Transformer 계열 학습에 중요한 AdamW 설정 유지
-    #     # betas=(0.9, 0.98)은 ViT 논문 등에서 자주 사용되는 설정입니다.
-    #     opt = torch.optim.AdamW(
-    #         self.parameters(), 
-    #         lr=self.hparams.lr,
-    #         weight_decay=5e-2, 
-    #         betas=(0.9, 0.98)  
-    #     )
-        
-    #     scheduler = {
-    #         'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(
-    #             opt, T_max=self.hparams.epochs, eta_min=1e-6
-    #         ),
-    #         'interval': 'epoch',
-    #         'frequency': 1
-    #     }
-    #     return [opt], [scheduler]
 
     def configure_optimizers(self):
         # Split parameters into two groups: vit and the rest.

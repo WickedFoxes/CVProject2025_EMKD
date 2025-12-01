@@ -17,6 +17,9 @@ class KnowledgeDistillationPLModel(BasePLModel):
     def __init__(self, params, train_indices, val_indices):
         super(KnowledgeDistillationPLModel, self).__init__()
         self.save_hyperparameters(params)
+        self.alpha = self.params.get('alpha', alpha)
+        self.beta1 = self.params.get('beta1', beta1)
+        self.beta2 = self.params.get('beta2', beta2)
 
         # 1. Load and freeze teacher net
         # SegmentationPLModel도 LightningModule이므로 load_from_checkpoint 사용 가능
@@ -52,7 +55,7 @@ class KnowledgeDistillationPLModel(BasePLModel):
         loss_imd = importance_maps_distillation(low, t_low) + importance_maps_distillation(high, t_high)
         loss_rad = region_affinity_distillation(low, t_low, mask) + region_affinity_distillation(high, t_high, mask)
 
-        loss = loss_seg + alpha * loss_pmd + beta1 * loss_imd + beta2 * loss_rad
+        loss = loss_seg + self.alpha * loss_pmd + self.beta1 * loss_imd + self.beta2 * loss_rad
 
         # [수정 1] Loss Logging (Lightning 2.x 스타일)
         # 각 컴포넌트 별 loss를 기록하면 학습 모니터링에 매우 유용합니다.
